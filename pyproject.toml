@@ -38,3 +38,5 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+# Warnung aus der Apprise-Bibliothek selbst, nicht aus unserem Code
+filterwarnings = ["ignore:'imghdr' is deprecated:DeprecationWarning"]
