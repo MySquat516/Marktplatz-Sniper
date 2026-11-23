@@ -14,7 +14,13 @@
   <a href="https://github.com/MySquat516/marktplatz-sniper/actions/workflows/docker.yml"><img src="https://github.com/MySquat516/marktplatz-sniper/actions/workflows/docker.yml/badge.svg" alt="Docker-Image"></a>
 </p>
 
+<p align="center"><sub>🇬🇧 This tool watches marketplaces in Germany and Austria (eBay.de, Kleinanzeigen, willhaben),<br>so the app and the docs are in German.</sub></p>
+
 ---
+
+> **Für Deutschland und Österreich:** Der Sniper beobachtet eBay.de, Kleinanzeigen (Deutschland) und
+> willhaben (Österreich). Marktplätze in anderen Ländern unterstützt er nicht, deshalb sind App und
+> Anleitung auf Deutsch.
 
 Der Sniper ist für Reseller gedacht, die gute Ware früh sehen wollen, ohne ständig selbst zu suchen.
 Er ergänzt den [vinted-bot](https://github.com/jasp-nerd/vinted-bot): Vinted prüft der vinted-bot
