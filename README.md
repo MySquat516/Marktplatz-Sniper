@@ -70,9 +70,7 @@ docker compose up -d     # starten oder aktualisieren
 Danach ist die Oberfläche unter `http://<server>:8092` erreichbar. Einen anderen Port wählst du beim
 Start, zum Beispiel mit `PORT=8096 docker compose up -d`. Im Container läuft der Sniper immer auf 8095.
 
-> **Privates Repo?** Dann muss sich der Server einmal bei der GitHub Container Registry anmelden:
-> `docker login ghcr.io -u <github-benutzer>`. Als Passwort dient ein Personal Access Token (classic)
-> mit dem Recht `read:packages`.
+Das Image ist öffentlich, ein `docker login` ist nicht nötig.
 
 ### Erste Schritte
 
