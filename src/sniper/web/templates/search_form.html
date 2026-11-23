@@ -31,6 +31,7 @@
   </label>
   <fieldset>
     <legend>Benachrichtigen an</legend>
+    <p class="hint">Ohne Ziel werden Treffer nur unter „Treffer“ angezeigt, aber nicht gemeldet.</p>
     {% for t in targets %}
       <label class="check"><input type="checkbox" name="target_ids" value="{{ t.id }}" {% if t.id in values.target_ids %}checked{% endif %}> {{ t.name }}</label>
     {% else %}

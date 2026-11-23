@@ -21,6 +21,9 @@ from sniper.platforms.base import InvalidUrl
 
 bp = Blueprint("views", __name__)
 MIN_INTERVAL_MIN = 2
+MAX_INTERVAL_MIN = 1440
+MAX_SILENCE_DAYS = 365
+MAX_PRICE = Decimal("99999999")
 
 
 def rt():
@@ -155,6 +158,9 @@ def _read_form() -> tuple[dict[str, Any], list[str], dict[str, Any]]:
         interval = int(values["interval_min"])
         if interval < MIN_INTERVAL_MIN:
             errors.append(f"Der Takt muss mindestens {MIN_INTERVAL_MIN} Minuten sein.")
+        if interval > MAX_INTERVAL_MIN:
+            errors.append(f"Der Takt darf höchstens {MAX_INTERVAL_MIN} Minuten (1 Tag) sein.")
+            interval = MAX_INTERVAL_MIN
         clean["interval_s"] = interval * 60
     except ValueError:
         errors.append("Der Takt muss eine ganze Zahl (Minuten) sein.")
@@ -163,12 +169,16 @@ def _read_form() -> tuple[dict[str, Any], list[str], dict[str, Any]]:
         clean["max_price"] = Decimal(price) if price else None
         if clean["max_price"] is not None and clean["max_price"] < 0:
             errors.append("Der Höchstpreis darf nicht negativ sein.")
+        if clean["max_price"] is not None and clean["max_price"] > MAX_PRICE:
+            errors.append("Der Höchstpreis ist zu groß.")
     except InvalidOperation:
         errors.append("Der Höchstpreis ist keine Zahl.")
     try:
         clean["silence_days"] = int(values["silence_days"] or 0)
         if clean["silence_days"] < 0:
             errors.append("Die Stille-Frist darf nicht negativ sein.")
+        if clean["silence_days"] > MAX_SILENCE_DAYS:
+            errors.append(f"Die Stille-Frist darf höchstens {MAX_SILENCE_DAYS} Tage sein.")
     except ValueError:
         errors.append("Die Stille-Frist muss eine ganze Zahl (Tage) sein.")
     clean["exclude_words"] = "\n".join(
@@ -332,19 +342,28 @@ def hits():
 def targets():
     with rt().session_factory() as db:
         error = None
-        form = {"name": "", "apprise_url": "", "status_notices": False}
+        form = {"name": "", "apprise_url": "", "status_notices": False, "add_to_all": True}
         if request.method == "POST":
             form = {
                 "name": request.form.get("name", "").strip(),
                 "apprise_url": request.form.get("apprise_url", "").strip(),
                 "status_notices": request.form.get("status_notices") == "on",
+                "add_to_all": request.form.get("add_to_all") == "on",
             }
             if not form["name"] or not form["apprise_url"]:
                 error = "Name und Apprise-Adresse ausfüllen."
             elif not apprise.Apprise().add(form["apprise_url"]):
                 error = "Ungültige Apprise-Adresse."
             else:
-                db.add(Target(**form))
+                target = Target(
+                    name=form["name"],
+                    apprise_url=form["apprise_url"],
+                    status_notices=form["status_notices"],
+                )
+                db.add(target)
+                if form["add_to_all"]:
+                    for search in db.scalars(select(Search)):
+                        search.targets.append(target)
                 db.commit()
                 flash(f"Ziel „{form['name']}“ angelegt.")
                 return redirect(url_for("views.targets"))
@@ -364,6 +383,18 @@ def test_target(target_id: int):
                 flash(f"Test gesendet an „{target.name}“.")
             except Exception as exc:
                 flash(f"Test an „{target.name}“ fehlgeschlagen: {exc}", "error")
+    return redirect(url_for("views.targets"))
+
+
+@bp.post("/benachrichtigungen/<int:target_id>/status")
+def toggle_status_notices(target_id: int):
+    with rt().session_factory() as db:
+        target = db.get(Target, target_id)
+        if target is not None:
+            target.status_notices = not target.status_notices
+            db.commit()
+            state = "an" if target.status_notices else "aus"
+            flash(f"Statusmeldungen für „{target.name}“ {state}.")
     return redirect(url_for("views.targets"))
 
 

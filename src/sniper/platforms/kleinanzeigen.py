@@ -70,12 +70,23 @@ class KleinanzeigenAdapter:
             if NO_RESULTS_MARKER in soup.get_text(" "):
                 return []
             raise LayoutChanged("Kleinanzeigen: keine Anzeigenliste auf der Seite gefunden")
+        articles = result_list.select(SELECTORS["item"])
+        if not articles and result_list.select("li article"):
+            raise LayoutChanged("Kleinanzeigen: Anzeigen ohne Kennung (data-adid) gefunden")
         now = self._now()
-        return [
+        listings = [
             listing
-            for article in result_list.select(SELECTORS["item"])
+            for article in articles
             if (listing := self._to_listing(article, now)) is not None
         ]
+        # Eine Liste voller Anzeigen, aus der nichts lesbar ist, heißt: Die Seite hat sich
+        # geändert. Das soll „Seite unbekannt“ melden, nicht „OK, nichts Neues“.
+        regular = [a for a in articles if not _is_top_ad(a)]
+        if regular and not listings:
+            raise LayoutChanged("Kleinanzeigen: Anzeigen gefunden, aber nicht lesbar")
+        if len(articles) >= 3 and not regular:
+            raise LayoutChanged("Kleinanzeigen: nur TOP-Anzeigen erkannt")
+        return listings
 
     def _to_listing(self, article: Tag, now: datetime) -> Listing | None:
         adid = article.get("data-adid")

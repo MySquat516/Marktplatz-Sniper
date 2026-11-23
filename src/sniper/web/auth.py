@@ -42,7 +42,8 @@ def init(app: Flask, settings) -> None:
     def check_csrf():
         if request.method == "POST":
             expected = session.get("csrf", "")
-            if not expected or not hmac.compare_digest(expected, request.form.get("csrf", "")):
+            given = request.form.get("csrf", "").encode()
+            if not expected or not hmac.compare_digest(expected.encode(), given):
                 abort(400, "Formular abgelaufen, bitte Seite neu laden.")
 
     @app.before_request
@@ -64,8 +65,11 @@ def init(app: Flask, settings) -> None:
         failures[ip] = [t for t in failures[ip] if now - t < FAIL_WINDOW]
         if len(failures[ip]) >= MAX_FAILS:
             return render_template("login.html", error="Zu viele Fehlversuche. Bitte warten."), 429
-        user_ok = hmac.compare_digest(request.form.get("username", ""), settings.app_user)
-        pass_ok = hmac.compare_digest(request.form.get("password", ""), settings.app_password)
+        # Als Bytes vergleichen: compare_digest kann keine str mit Umlauten.
+        user = request.form.get("username", "").encode()
+        password = request.form.get("password", "").encode()
+        user_ok = hmac.compare_digest(user, settings.app_user.encode())
+        pass_ok = hmac.compare_digest(password, settings.app_password.encode())
         if not (user_ok and pass_ok):
             failures[ip].append(now)
             return render_template("login.html", error="Benutzer oder Passwort falsch.")

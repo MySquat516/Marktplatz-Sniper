@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable, Mapping
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -56,10 +56,23 @@ class Scheduler:
                     search = session.get(Search, search_id)
                     adapter = self.adapters[Platform(search.platform)]
                     run_check(session, search, adapter, self.now())
-                except Exception:
+                except Exception as exc:
                     log.exception("Suche %s konnte nicht geprüft werden", search_id)
                     session.rollback()
+                    self._postpone(search_id, exc)
             deliver_due(session, self.now(), send=self._send)
+
+    def _postpone(self, search_id: int, exc: Exception) -> None:
+        """Nach einem unerwarteten Fehler nicht im 5-Sekunden-Takt erneut versuchen."""
+        try:
+            with self.session_factory() as session:
+                search = session.get(Search, search_id)
+                if search is not None:
+                    search.next_check_at = self.now() + timedelta(seconds=search.interval_s)
+                    search.last_error = f"Interner Fehler: {exc}"
+                    session.commit()
+        except Exception:
+            log.exception("Suche %s konnte nicht verschoben werden", search_id)
 
     def check_now(self, search_id: int) -> None:
         with self.session_factory() as session:

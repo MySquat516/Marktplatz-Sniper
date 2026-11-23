@@ -30,6 +30,7 @@
       <div><dt>Letzter Check</dt><dd>{{ s.last_check_at | local }}</dd></div>
       <div><dt>Letzter Treffer</dt><dd>{{ s.last_match_at | local }}</dd></div>
     </dl>
+    {% if not s.targets %}<p class="error small">Kein Benachrichtigungsziel – Treffer werden nicht gemeldet. <a href="{{ url_for('views.edit_search', search_id=s.id) }}">Ziel wählen</a></p>{% endif %}
     {% if s.last_error and s.state != 'ok' %}<p class="error small">{{ s.last_error }}</p>{% endif %}
     <div class="actions">
       <form method="post" action="{{ url_for('views.check_search', search_id=s.id) }}">

@@ -14,6 +14,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
 
 from sniper.db import Search, Seen, Target
@@ -40,7 +41,9 @@ def next_interval(
 ) -> timedelta:
     base = float(search.interval_s)
     if state is SearchState.BLOCKED:
-        base = search.interval_s * 2**search.consecutive_failures
+        # Exponent gedeckelt: 2**6 × Takt liegt immer über der Stunde, und große Zahlen
+        # würden sonst nach tausend Fehlschlägen überlaufen.
+        base = search.interval_s * 2 ** min(search.consecutive_failures, 6)
     seconds = base * (0.8 + 0.4 * rng())
     if state is SearchState.BLOCKED:
         seconds = min(seconds, MAX_INTERVAL_S)
@@ -59,16 +62,32 @@ def run_check(
     rng: Callable[[], float] = random.random,
 ) -> SearchState:
     platform = Platform(search.platform)
-    spec = SearchSpec.from_dict(json.loads(search.spec_json))
+    spec_json = search.spec_json
+    spec = SearchSpec.from_dict(json.loads(spec_json))
+    listings, error = None, None
     try:
         listings = adapter.fetch(spec)
-    except (Blocked, RateLimited) as exc:
-        state = _failed(session, search, SearchState.BLOCKED, exc, now)
-    except LayoutChanged as exc:
-        state = _failed(session, search, SearchState.LAYOUT_CHANGED, exc, now)
     except Exception as exc:
-        log.warning("Check von %r fehlgeschlagen", search.name, exc_info=True)
-        state = _failed(session, search, SearchState.ERROR, exc, now)
+        error = exc
+
+    # Der Abruf kann dauern. Wurde die Suche in der Zeit in der Oberfläche geändert, pausiert
+    # oder gelöscht, gehört das Ergebnis zur alten Fassung und wird verworfen.
+    try:
+        session.refresh(search)
+    except InvalidRequestError:
+        session.rollback()
+        return SearchState.PAUSED
+    if search.spec_json != spec_json or not search.active:
+        session.commit()
+        return SearchState(search.state)
+
+    if isinstance(error, (Blocked, RateLimited)):
+        state = _failed(session, search, SearchState.BLOCKED, error, now)
+    elif isinstance(error, LayoutChanged):
+        state = _failed(session, search, SearchState.LAYOUT_CHANGED, error, now)
+    elif error is not None:
+        log.warning("Check von %r fehlgeschlagen", search.name, exc_info=error)
+        state = _failed(session, search, SearchState.ERROR, error, now)
     else:
         state = _succeeded(session, search, platform, listings, now)
 

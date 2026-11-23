@@ -1,4 +1,6 @@
 """Erst speichern, dann senden: So geht nach einem Absturz keine Meldung verloren.
+Zugestellt wird „mindestens einmal“: Nur ein Absturz genau zwischen Senden und
+Speichern kann eine Meldung doppelt schicken.
 
 Jede Meldung wird einzeln gesendet und sofort als gesendet festgehalten; ein Ziel, das
 nicht erreichbar ist, hält die anderen nicht auf.
@@ -65,15 +67,17 @@ def deliver_due(
     delivered = 0
     for entry in due:
         target = session.get(Target, entry.target_id)
+        # Erst beanspruchen, dann senden: Scheitert danach das Speichern von „gesendet“,
+        # wird die Meldung erst nach dem Wartefenster wiederholt statt bei jedem Durchlauf.
+        entry.attempts += 1
+        entry.next_attempt_at = now + BACKOFF[min(entry.attempts - 1, len(BACKOFF) - 1)]
+        session.commit()
         try:
             send(target.apprise_url, Message(entry.title, entry.body, entry.attach_url))
         except Exception as exc:
-            entry.attempts += 1
             entry.last_error = str(exc) or type(exc).__name__
             if now - entry.created_at >= GIVE_UP_AFTER:
                 entry.failed_at = now
-            else:
-                entry.next_attempt_at = now + BACKOFF[min(entry.attempts - 1, len(BACKOFF) - 1)]
             log.warning("Meldung an %s nicht zugestellt: %s", target.name, entry.last_error)
         else:
             entry.sent_at = now
