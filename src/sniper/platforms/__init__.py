@@ -42,8 +42,10 @@ def build_adapters(
 ) -> dict[Platform, Adapter]:
     from sniper.platforms.ebay import EbayAdapter
     from sniper.platforms.kleinanzeigen import KleinanzeigenAdapter
+    from sniper.platforms.willhaben import WillhabenAdapter
 
     return {
         Platform.EBAY: EbayAdapter(http, credentials),
         Platform.KLEINANZEIGEN: KleinanzeigenAdapter(http),
+        Platform.WILLHABEN: WillhabenAdapter(http),
     }
