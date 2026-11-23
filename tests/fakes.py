@@ -8,6 +8,7 @@ class FakeResponse:
     status_code: int = 200
     text: str = ""
     headers: dict = field(default_factory=dict)
+    content: bytes = b""
 
 
 class FakeSession:

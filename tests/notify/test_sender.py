@@ -27,5 +27,97 @@ def test_sender_retries_without_attachment(monkeypatch):
         return kw.get("attach") is None
 
     monkeypatch.setattr(apprise.Apprise, "notify", fake_notify)
-    send("json://localhost:1/", Message("T", "B", "https://img/1.jpg"))
+    send("json://localhost:1/", Message("T", "B", "https://img/1.jpg"), fetch_image=jpeg)
     assert len(calls) == 2 and calls[0] is not None and calls[1] is None
+
+
+JPEG = b"\xff\xd8\xff\xe0" + b"0" * 100
+
+
+def jpeg(url):
+    return JPEG, "image/jpeg"
+
+
+def test_image_is_downloaded_and_attached_as_local_file(monkeypatch):
+    import apprise
+
+    seen = []
+
+    def fake_notify(self, **kw):
+        attach = kw.get("attach")
+        if attach is not None:
+            path = attach[0].path
+            with open(path, "rb") as f:
+                seen.append((path, f.read()))
+        return True
+
+    monkeypatch.setattr(apprise.Apprise, "notify", fake_notify)
+    fetched = []
+    send(
+        "json://localhost:1/",
+        Message("T", "B", "https://img/1"),
+        fetch_image=lambda url: fetched.append(url) or jpeg(url),
+    )
+    assert fetched == ["https://img/1"]
+    ((path, data),) = seen
+    assert path.endswith(".jpg") and data == JPEG
+
+
+def test_png_keeps_png_extension(monkeypatch):
+    import apprise
+
+    paths = []
+    monkeypatch.setattr(
+        apprise.Apprise, "notify", lambda self, **kw: paths.append(kw["attach"][0].path) or True
+    )
+    send(
+        "json://localhost:1/",
+        Message("T", "B", "https://img/1"),
+        fetch_image=lambda u: (b"png", "image/png"),
+    )
+    assert paths[0].endswith(".png")
+
+
+def test_image_download_failure_sends_text_only(monkeypatch):
+    import apprise
+
+    calls = []
+    monkeypatch.setattr(
+        apprise.Apprise, "notify", lambda self, **kw: calls.append(kw.get("attach")) or True
+    )
+
+    def broken(url):
+        raise OSError("403 Forbidden")
+
+    send("json://localhost:1/", Message("T", "B", "https://img/1"), fetch_image=broken)
+    assert calls == [None]
+
+
+def test_download_image_uses_browser_session():
+    from sniper.notify.sender import download_image
+    from tests.fakes import FakeResponse, FakeSession
+
+    session = FakeSession([FakeResponse(200, headers={"Content-Type": "image/jpeg"}, content=JPEG)])
+    assert download_image("https://img/1", session=session) == (JPEG, "image/jpeg")
+    method, url, kwargs = session.calls[0]
+    assert (method, url) == ("GET", "https://img/1")
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        dict(status_code=404, headers={"Content-Type": "image/jpeg"}, content=JPEG),
+        dict(status_code=200, headers={"Content-Type": "text/html"}, content=b"<html>"),
+        dict(
+            status_code=200,
+            headers={"Content-Type": "image/jpeg"},
+            content=b"0" * (10 * 1024 * 1024 + 1),
+        ),
+    ],
+)
+def test_download_image_rejects_bad_responses(response):
+    from sniper.notify.sender import download_image
+    from tests.fakes import FakeResponse, FakeSession
+
+    with pytest.raises(ValueError):
+        download_image("https://img/1", session=FakeSession([FakeResponse(**response)]))

@@ -35,6 +35,9 @@ SELECTORS = {
 # ist der aktuelle Preis, eine zweite (durchgestrichen) wäre der alte.
 _PRICE_LINE = re.compile(r"^(\d[\d.]*(,\d{1,2})?\s*€)?\s*(VB)?$|^Zu verschenken$")
 NO_RESULTS_MARKER = "keine Ergebnisse"
+# Bildgröße: $_2 ist das Listen-Vorschaubild (150 × 200), $_59 die Größe der Anzeigenseite
+# (720 × 960). Am 23.11.2026 im Browser nachgemessen.
+IMAGE_RULE = "$_59.AUTO"
 _TIME = re.compile(r"(Heute|Gestern),\s*(\d{1,2}):(\d{2})")
 _DATE = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})")
 
@@ -113,7 +116,7 @@ class KleinanzeigenAdapter:
             price=price,
             negotiable=negotiable,
             shipping=shipping,
-            photo_urls=(str(photo),) if photo else (),
+            photo_urls=(large_image(str(photo)),) if photo else (),
             location=_text(article.select_one(SELECTORS["location"])) or None,
             posted_at=parse_time(_text(article.select_one(SELECTORS["time"])), now),
         )
@@ -131,6 +134,13 @@ def _price_text(article: Tag) -> str:
         if text and _PRICE_LINE.match(text):
             return text
     return ""
+
+
+def large_image(url: str) -> str:
+    """Tauscht die Bildgröße in der URL gegen die große Fassung aus."""
+    if "rule=" in url:
+        return re.sub(r"rule=[^&]*", f"rule={IMAGE_RULE}", url)
+    return f"{url}{'&' if '?' in url else '?'}rule={IMAGE_RULE}"
 
 
 def _text(el: Tag | None) -> str:

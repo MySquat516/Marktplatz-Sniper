@@ -78,7 +78,7 @@ def test_fetch_parses_listings():
     assert (jacke.price, jacke.negotiable, jacke.shipping) == (Decimal("45"), True, True)
     assert jacke.location == "10115 Berlin"
     assert jacke.photo_urls == (
-        "https://img.kleinanzeigen.de/api/v1/prod-ads/images/2934567890?rule=$_2.AUTO",
+        "https://img.kleinanzeigen.de/api/v1/prod-ads/images/2934567890?rule=$_59.AUTO",
     )
     assert (kinder.price, kinder.shipping, kinder.photo_urls) == (Decimal("0"), False, ())
     assert (leder.price, leder.shipping) == (Decimal("1250"), None)
@@ -136,7 +136,7 @@ def test_real_page():
     assert soft.posted_at == datetime(2026, 11, 23, 7, 25, tzinfo=UTC)
     assert soft.photo_urls == (
         "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a1/"
-        "a15e46ee-5fcb-4e96-8907-55d79ac82e46?rule=$_2.AUTO",
+        "a15e46ee-5fcb-4e96-8907-55d79ac82e46?rule=$_59.AUTO",
     )
     assert (fleece.price, fleece.location) == (Decimal("15"), "27639 Dorum")
 
@@ -144,3 +144,23 @@ def test_real_page():
 def test_real_page_is_newest_first():
     times = [item.posted_at for item in fetch("real-results.html") if item.posted_at]
     assert times == sorted(times, reverse=True)
+
+
+@pytest.mark.parametrize(
+    ("src", "expected"),
+    [
+        (
+            "https://img.kleinanzeigen.de/x?rule=$_2.AUTO",
+            "https://img.kleinanzeigen.de/x?rule=$_59.AUTO",
+        ),
+        (
+            "https://img.kleinanzeigen.de/x?cache=yes&rule=%24_2.AUTO",
+            "https://img.kleinanzeigen.de/x?cache=yes&rule=$_59.AUTO",
+        ),
+        ("https://img.kleinanzeigen.de/x", "https://img.kleinanzeigen.de/x?rule=$_59.AUTO"),
+    ],
+)
+def test_large_image_url(src, expected):
+    from sniper.platforms.kleinanzeigen import large_image
+
+    assert large_image(src) == expected
