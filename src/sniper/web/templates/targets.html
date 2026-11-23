@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Benachrichtigungen{% endblock %}
+{% block content %}
+<h1>Benachrichtigungen</h1>
+<ul class="cards">
+  {% for t in targets %}
+  <li class="card">
+    <div class="card-head"><span class="name">{{ t.name }}</span>{% if t.status_notices %}<span class="tag">Statusmeldungen</span>{% endif %}</div>
+    <p class="hint">{{ mask(t.apprise_url) }}</p>
+    <div class="actions">
+      <form method="post" action="{{ url_for('views.test_target', target_id=t.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="secondary">Test senden</button>
+      </form>
+      <form method="post" action="{{ url_for('views.delete_target', target_id=t.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="secondary">Löschen</button>
+      </form>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+
+<h2>Neues Ziel</h2>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form class="stack" method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <label>Name <input name="name" value="{{ form.name }}" placeholder="Handy" required></label>
+  <label>Apprise-Adresse <input name="apprise_url" value="{{ form.apprise_url }}" placeholder="tgram://bottoken/chatid" required autocomplete="off"></label>
+  <p class="hint">Beispiele: <code>tgram://BOT_TOKEN/CHAT_ID</code>, <code>discord://WEBHOOK_ID/WEBHOOK_TOKEN</code>, <code>ntfy://THEMA</code>, <code>hassio://HOST/TOKEN</code>. Alle Dienste: <a href="https://github.com/caronc/apprise/wiki" target="_blank" rel="noopener">Apprise-Wiki</a></p>
+  <label class="check"><input type="checkbox" name="status_notices" {% if form.status_notices %}checked{% endif %}> bekommt Statusmeldungen (Block, Fehler, Stille)</label>
+  <button>Anlegen</button>
+</form>
+{% endblock %}

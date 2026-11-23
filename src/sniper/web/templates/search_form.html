@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Suche bearbeiten' if search else 'Neue Suche' }}{% endblock %}
+{% block content %}
+<h1>{{ 'Suche bearbeiten' if search else 'Neue Suche' }}{% if spec %} <span class="platform">{{ spec.platform.label }}</span>{% endif %}</h1>
+
+{% for e in errors %}<p class="error">{{ e }}</p>{% endfor %}
+
+<form class="stack" method="post" action="{{ url_for('views.edit_search', search_id=search.id) if search else url_for('views.create_search') }}">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <label>Such-URL
+    <input name="url" type="url" required value="{{ values.url }}">
+  </label>
+  {% if spec and spec.ignored %}<p class="hint">Wird ignoriert: {{ spec.ignored | join(', ') }}</p>{% endif %}
+  {% if search %}<p class="hint">Eine geänderte URL startet die Suche neu: Der nächste Check meldet nichts und merkt sich nur die aktuelle Seite.</p>{% endif %}
+  <label>Name
+    <input name="name" value="{{ values.name }}" required>
+  </label>
+  <div class="row">
+    <label>Takt (Minuten)
+      <input name="interval_min" type="number" min="2" step="1" inputmode="numeric" value="{{ values.interval_min }}">
+    </label>
+    <label>Höchstpreis (€, optional)
+      <input name="max_price" inputmode="decimal" value="{{ values.max_price }}">
+    </label>
+  </div>
+  <label>Ausschlusswörter (eins pro Zeile)
+    <textarea name="exclude_words" rows="3" placeholder="defekt">{{ values.exclude_words }}</textarea>
+  </label>
+  <label>Stille-Warnung nach … Tagen ohne Treffer (0 = aus)
+    <input name="silence_days" type="number" min="0" step="1" inputmode="numeric" value="{{ values.silence_days }}">
+  </label>
+  <fieldset>
+    <legend>Benachrichtigen an</legend>
+    {% for t in targets %}
+      <label class="check"><input type="checkbox" name="target_ids" value="{{ t.id }}" {% if t.id in values.target_ids %}checked{% endif %}> {{ t.name }}</label>
+    {% else %}
+      <p class="hint">Noch keine Ziele. <a href="{{ url_for('views.targets') }}">Benachrichtigungen einrichten</a></p>
+    {% endfor %}
+  </fieldset>
+  <button>Speichern</button>
+</form>
+
+{% if search %}
+<form class="danger" method="post" action="{{ url_for('views.delete_search', search_id=search.id) }}">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <button class="secondary">Suche löschen</button>
+</form>
+{% endif %}
+
+{% if preview_error %}<p class="error">{{ preview_error }}</p>{% endif %}
+{% if preview is not none %}
+<h2>Vorschau <span class="hint">(so sieht die Suche gerade aus, es wird nichts gemeldet)</span></h2>
+{% if not preview %}<p class="empty">Gerade keine Anzeigen.</p>{% endif %}
+<ul class="hits">
+  {% for l in preview %}
+  <li>
+    {% if l.photo_urls %}<img src="{{ l.photo_urls[0] }}" alt="" loading="lazy">{% else %}<span class="nophoto"></span>{% endif %}
+    <div><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a><br><strong>{{ format_price(l) }}</strong>{% if l.location %} · {{ l.location }}{% endif %}</div>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

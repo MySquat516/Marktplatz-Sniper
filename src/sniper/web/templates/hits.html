@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Treffer{% endblock %}
+{% block content %}
+<h1>Treffer</h1>
+{% if not items %}<p class="empty">Noch keine neuen Anzeigen. Beim ersten Check merkt sich eine Suche nur die aktuelle Seite.</p>{% endif %}
+<ul class="hits">
+  {% for item in items %}
+  {% set l = item.listing %}
+  <li>
+    {% if l.photo_urls %}<img src="{{ l.photo_urls[0] }}" alt="" loading="lazy">{% else %}<span class="nophoto"></span>{% endif %}
+    <div>
+      <a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a><br>
+      <strong>{{ format_price(l) }}</strong> · {{ l.platform.label }} · {{ item.search }} · {{ item.seen.first_seen_at | local }}<br>
+      {% if item.seen.status == 'matched' %}<span class="tag ok">gemeldet</span>{% else %}<span class="tag">verworfen: {{ item.seen.reason }}</span>{% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% if failed %}
+<h2>Nicht zugestellt</h2>
+<ul class="plain">
+  {% for e in failed %}<li><span class="tag error">nicht zugestellt</span> {{ e.title }} <span class="hint">({{ e.failed_at | local }}: {{ e.last_error }})</span></li>{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

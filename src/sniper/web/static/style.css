@@ -1,0 +1,52 @@
+:root {
+  --bg: #f6f5f2; --fg: #1d1d1b; --muted: #6b6a65; --card: #fff; --line: #e3e1db;
+  --accent: #2f6f5e; --error: #b3261e; --warn: #a15c00;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #161615; --fg: #ecebe7; --muted: #a3a19a; --card: #21211f; --line: #34332f; --accent: #7cc2ae; --error: #f2b8b5; --warn: #ffb870; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); line-height: 1.45; }
+.top { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; align-items: center; padding: .75rem 1rem; border-bottom: 1px solid var(--line); background: var(--card); }
+.brand { font-weight: 700; color: var(--fg); text-decoration: none; }
+nav { display: flex; flex-wrap: wrap; gap: .25rem; }
+nav a { padding: .6rem .7rem; border-radius: .5rem; color: var(--fg); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+nav a[aria-current="page"] { background: var(--bg); font-weight: 600; }
+main { max-width: 760px; margin: 0 auto; padding: 1rem; }
+footer { max-width: 760px; margin: 0 auto 2rem; padding: 0 1rem; }
+h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+a { color: var(--accent); }
+input, textarea, button, .button { font: inherit; border-radius: .5rem; min-height: 44px; }
+input, textarea { width: 100%; padding: .55rem .7rem; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+button, .button { padding: .55rem 1rem; border: 0; background: var(--accent); color: #fff; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+button.secondary, .button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+button.link { background: none; color: var(--muted); padding: 0; min-height: auto; text-decoration: underline; }
+.row { display: flex; gap: .75rem; flex-wrap: wrap; } .row > * { flex: 1 1 12rem; }
+.add label { font-weight: 600; display: block; margin-bottom: .3rem; }
+.add .row input { flex: 1 1 16rem; } .add .row button { flex: 0 0 auto; }
+.stack { display: grid; gap: .9rem; } .stack label { display: grid; gap: .3rem; }
+.stack.narrow { max-width: 22rem; }
+label.check { display: flex; gap: .5rem; align-items: center; min-height: 44px; }
+label.check input { width: auto; min-height: auto; }
+fieldset { border: 1px solid var(--line); border-radius: .5rem; }
+.cards, .hits, .plain { list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: .75rem; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: .75rem; padding: .8rem 1rem; }
+.card-head { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.card-head .name { font-weight: 600; flex: 1; }
+.platform, .tag { font-size: .8rem; padding: .1rem .5rem; border-radius: 1rem; background: var(--bg); color: var(--muted); }
+.tag.ok { color: var(--accent); } .tag.error { color: var(--error); }
+.state { font-size: .85rem; font-weight: 600; }
+.state-ok { color: var(--accent); } .state-blocked, .state-error, .state-layout_changed { color: var(--error); }
+.state-paused, .state-pending { color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; margin: .5rem 0; font-size: .9rem; }
+.meta div { display: flex; gap: .35rem; } .meta dt { color: var(--muted); } .meta dd { margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; } .actions form { margin: 0; }
+.hits li { display: flex; gap: .75rem; background: var(--card); border: 1px solid var(--line); border-radius: .75rem; padding: .6rem; }
+.hits img, .nophoto { width: 72px; height: 72px; object-fit: cover; border-radius: .5rem; background: var(--bg); flex: 0 0 72px; }
+.error { color: var(--error); } .small { font-size: .85rem; margin: .25rem 0; }
+.hint, .empty { color: var(--muted); font-size: .9rem; }
+.flash { background: var(--card); border-left: 4px solid var(--accent); padding: .6rem .8rem; border-radius: .5rem; }
+.flash.error { border-color: var(--error); }
+.danger { margin-top: 1rem; }
+code { font-size: .85em; }

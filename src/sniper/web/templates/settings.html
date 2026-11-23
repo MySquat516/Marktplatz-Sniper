@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Einstellungen{% endblock %}
+{% block content %}
+<h1>Einstellungen</h1>
+<h2>eBay</h2>
+<p>eBay-Abfragen heute: {{ calls_today }} von {{ limit }}</p>
+{% if from_env %}
+  <p class="hint">Die eBay-Zugangsdaten sind per Umgebungsvariable gesetzt und können hier nicht geändert werden.</p>
+{% endif %}
+<form class="stack" method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <label>Client-ID (App ID)
+    <input name="ebay_client_id" value="{{ '' if from_env else client_id }}" autocomplete="off" {% if from_env %}disabled{% endif %}>
+  </label>
+  <label>Client-Secret (Cert ID)
+    <input name="ebay_client_secret" type="password" autocomplete="new-password"
+           placeholder="{{ 'gespeichert – leer lassen, um es zu behalten' if has_secret else '' }}" {% if from_env %}disabled{% endif %}>
+  </label>
+  {% if not from_env %}<button>Speichern</button>{% endif %}
+</form>
+{% endblock %}

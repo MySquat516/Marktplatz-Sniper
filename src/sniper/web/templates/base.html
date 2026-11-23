@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Sniper{% endblock %} · Marktplatz-Sniper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="{{ url_for('views.searches') }}">Sniper</a>
+    {% if request.endpoint != 'login' %}
+    <nav>
+      <a href="{{ url_for('views.searches') }}" {% if request.endpoint in ('views.searches', 'views.edit_search', 'views.new_search', 'views.create_search') %}aria-current="page"{% endif %}>Suchen</a>
+      <a href="{{ url_for('views.hits') }}" {% if request.endpoint == 'views.hits' %}aria-current="page"{% endif %}>Treffer</a>
+      <a href="{{ url_for('views.targets') }}" {% if request.endpoint == 'views.targets' %}aria-current="page"{% endif %}>Benachrichtigungen</a>
+      <a href="{{ url_for('views.settings') }}" {% if request.endpoint == 'views.settings' %}aria-current="page"{% endif %}>Einstellungen</a>
+    </nav>
+    {% endif %}
+  </header>
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <p class="flash {{ category }}" role="status">{{ message }}</p>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  {% if auth_enabled and request.endpoint != 'login' %}
+  <footer>
+    <form method="post" action="{{ url_for('logout') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button class="link">Abmelden</button>
+    </form>
+  </footer>
+  {% endif %}
+</body>
+</html>

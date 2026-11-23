@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Suchen{% endblock %}
+{% block content %}
+<form class="add" method="post" action="{{ url_for('views.new_search') }}">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <label for="url">Neue Suche</label>
+  <div class="row">
+    <input id="url" name="url" type="url" inputmode="url" required
+           placeholder="Such-URL von eBay, Kleinanzeigen oder willhaben einfügen…" value="{{ url_value }}">
+    <button>Weiter</button>
+  </div>
+  {% if url_error %}<p class="error">{{ url_error }}</p>{% endif %}
+</form>
+
+{% if not searches %}
+  <p class="empty">Noch keine Suchen. Stell eine Suche auf der Seite selbst ein (Suchbegriff, Preis, Größe …) und füg ihre URL oben ein.</p>
+{% endif %}
+
+<ul class="cards">
+{% for s in searches %}
+  {% set state = SearchState(s.state) %}
+  <li class="card">
+    <div class="card-head">
+      <span class="platform">{{ Platform(s.platform).label }}</span>
+      <a class="name" href="{{ url_for('views.edit_search', search_id=s.id) }}">{{ s.name }}</a>
+      <span class="state state-{{ s.state }}">{{ state.label }}</span>
+    </div>
+    <dl class="meta">
+      <div><dt>Takt</dt><dd>{{ s.interval_s // 60 }} min</dd></div>
+      <div><dt>Letzter Check</dt><dd>{{ s.last_check_at | local }}</dd></div>
+      <div><dt>Letzter Treffer</dt><dd>{{ s.last_match_at | local }}</dd></div>
+    </dl>
+    {% if s.last_error and s.state != 'ok' %}<p class="error small">{{ s.last_error }}</p>{% endif %}
+    <div class="actions">
+      <form method="post" action="{{ url_for('views.check_search', search_id=s.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="secondary">Jetzt prüfen</button>
+      </form>
+      {% if s.active %}
+      <form method="post" action="{{ url_for('views.pause_search', search_id=s.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="secondary">Pausieren</button>
+      </form>
+      {% else %}
+      <form method="post" action="{{ url_for('views.resume_search', search_id=s.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="secondary">Fortsetzen</button>
+      </form>
+      {% endif %}
+      <a class="button secondary" href="{{ url_for('views.edit_search', search_id=s.id) }}">Bearbeiten</a>
+    </div>
+  </li>
+{% endfor %}
+</ul>
+{% endblock %}
