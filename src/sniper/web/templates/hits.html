@@ -2,7 +2,37 @@
 {% block title %}Treffer{% endblock %}
 {% block content %}
 <h1>Treffer</h1>
-{% if not items %}<p class="empty">Noch keine neuen Anzeigen. Beim ersten Check merkt sich eine Suche nur die aktuelle Seite.</p>{% endif %}
+<form class="filters" method="get" action="{{ url_for('views.hits') }}">
+  <label>Sortieren
+    <select name="sort" onchange="this.form.submit()">
+      {% for value, label in sorts.items() %}<option value="{{ value }}"{% if filters.sort == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Suche
+    <select name="suche" onchange="this.form.submit()">
+      <option value="">Alle</option>
+      {% for s in searches %}<option value="{{ s.id }}"{% if filters.suche == s.id %} selected{% endif %}>{{ s.name }} ({{ Platform(s.platform).label }})</option>{% endfor %}
+    </select>
+  </label>
+  <label>Plattform
+    <select name="plattform" onchange="this.form.submit()">
+      <option value="">Alle</option>
+      {% for p in Platform %}<option value="{{ p.value }}"{% if filters.plattform == p.value %} selected{% endif %}>{{ p.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Status
+    <select name="status" onchange="this.form.submit()">
+      <option value="">Alle</option>
+      {% for value, label in statuses.items() %}<option value="{{ value }}"{% if filters.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <noscript><button>Anwenden</button></noscript>
+  {% if filtered or filters.sort != 'neu' %}<a class="reset" href="{{ url_for('views.hits') }}">Zurücksetzen</a>{% endif %}
+</form>
+{% if not items %}
+  {% if filtered %}<p class="empty">Keine Treffer für diese Auswahl.</p>
+  {% else %}<p class="empty">Noch keine neuen Anzeigen. Beim ersten Check merkt sich eine Suche nur die aktuelle Seite.</p>{% endif %}
+{% endif %}
 <ul class="hits">
   {% for item in items %}
   {% set l = item.listing %}

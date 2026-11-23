@@ -10,7 +10,7 @@ from urllib.parse import parse_qsl, urlsplit
 
 import apprise
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
-from sqlalchemy import delete, select
+from sqlalchemy import Float, cast, delete, func, select
 
 from sniper.db import OutboxEntry, Search, Seen, Target, get_setting, set_setting
 from sniper.engine import quota
@@ -309,18 +309,52 @@ def check_search(search_id: int):
 # --- Treffer ------------------------------------------------------------------------------
 
 
+SORTS = {"neu": "Neueste", "preis_auf": "Preis ↑", "preis_ab": "Preis ↓"}
+STATUSES = {"gemeldet": "Gemeldet", "verworfen": "Verworfen"}
+_STATUS_VALUES = {"gemeldet": "matched", "verworfen": "rejected"}
+
+
+def _hit_filters(db) -> dict[str, Any]:
+    """Liest die Auswahl aus der URL; Unbekanntes wird still ignoriert."""
+    args = request.args
+    search_ids = set(db.scalars(select(Search.id)))
+    suche = args.get("suche", "")
+    return {
+        "sort": args.get("sort") if args.get("sort") in SORTS else "neu",
+        "suche": int(suche) if suche.isdigit() and int(suche) in search_ids else None,
+        "plattform": args.get("plattform")
+        if args.get("plattform") in Platform._value2member_map_
+        else "",
+        "status": args.get("status") if args.get("status") in STATUSES else "",
+    }
+
+
 @bp.get("/treffer")
 def hits():
     with rt().session_factory() as db:
-        rows = db.execute(
+        f = _hit_filters(db)
+        query = (
             select(Seen, Search.name)
             .join(Search, Search.id == Seen.search_id)
             .where(Seen.status != "seeded")
-            .order_by(Seen.first_seen_at.desc(), Seen.id.desc())
-            .limit(100)
-        ).all()
+        )
+        if f["suche"] is not None:
+            query = query.where(Seen.search_id == f["suche"])
+        if f["plattform"]:
+            query = query.where(Seen.platform == f["plattform"])
+        if f["status"]:
+            query = query.where(Seen.status == _STATUS_VALUES[f["status"]])
+        # Preis steckt im gespeicherten JSON; Anzeigen ohne Preis kommen ans Ende.
+        price = cast(func.json_extract(Seen.listing_json, "$.price"), Float)
+        newest = (Seen.first_seen_at.desc(), Seen.id.desc())
+        if f["sort"] == "preis_auf":
+            query = query.order_by(price.is_(None), price.asc(), *newest)
+        elif f["sort"] == "preis_ab":
+            query = query.order_by(price.is_(None), price.desc(), *newest)
+        else:
+            query = query.order_by(*newest)
         items = []
-        for seen, search_name in rows:
+        for seen, search_name in db.execute(query.limit(100)).all():
             try:
                 listing = Listing.from_dict(json.loads(seen.listing_json))
             except (KeyError, ValueError, TypeError):
@@ -332,7 +366,18 @@ def hits():
             .order_by(OutboxEntry.failed_at.desc())
             .limit(20)
         ).all()
-        return render_template("hits.html", items=items, failed=failed, format_price=format_price)
+        return render_template(
+            "hits.html",
+            items=items,
+            failed=failed,
+            format_price=format_price,
+            filters=f,
+            filtered=any([f["suche"] is not None, f["plattform"], f["status"]]),
+            searches=db.scalars(select(Search).order_by(Search.name)).all(),
+            sorts=SORTS,
+            statuses=STATUSES,
+            Platform=Platform,
+        )
 
 
 # --- Benachrichtigungen -------------------------------------------------------------------
