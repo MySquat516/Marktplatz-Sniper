@@ -41,5 +41,9 @@ def build_adapters(
     http: HttpClient, credentials: Callable[[], tuple[str, str]]
 ) -> dict[Platform, Adapter]:
     from sniper.platforms.ebay import EbayAdapter
+    from sniper.platforms.kleinanzeigen import KleinanzeigenAdapter
 
-    return {Platform.EBAY: EbayAdapter(http, credentials)}
+    return {
+        Platform.EBAY: EbayAdapter(http, credentials),
+        Platform.KLEINANZEIGEN: KleinanzeigenAdapter(http),
+    }
