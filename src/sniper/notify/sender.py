@@ -19,7 +19,10 @@ from sniper.notify.message import Message
 log = logging.getLogger(__name__)
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 IMAGE_TIMEOUT_S = 15
-_SUFFIXES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}
+# Nur Formate, die alle Dienste als Foto anzeigen. AVIF/WebP lehnt z. B. Telegram ab.
+_SUFFIXES = {"image/jpeg": ".jpg", "image/png": ".png"}
+# Ausdrücklich JPEG anfragen: Mit der normalen Browser-Kennung liefern Bildserver sonst AVIF.
+_ACCEPT = "image/jpeg,image/png;q=0.9,*/*;q=0.5"
 
 
 class SendError(Exception):
@@ -32,13 +35,13 @@ def download_image(url: str, session: Any = None) -> tuple[bytes, str]:
         from curl_cffi import requests
 
         session = requests.Session(impersonate="chrome")
-    resp = session.request("GET", url, timeout=IMAGE_TIMEOUT_S)
+    resp = session.request("GET", url, headers={"Accept": _ACCEPT}, timeout=IMAGE_TIMEOUT_S)
     headers = {str(k).lower(): str(v) for k, v in dict(resp.headers).items()}
     content_type = headers.get("content-type", "").split(";")[0].strip().lower()
     if resp.status_code != 200:
         raise ValueError(f"Bild: HTTP {resp.status_code}")
-    if not content_type.startswith("image/"):
-        raise ValueError(f"Bild: unerwarteter Inhalt {content_type or '?'}")
+    if content_type not in _SUFFIXES:
+        raise ValueError(f"Bild: unerwartetes Format {content_type or '?'}")
     if len(resp.content) > MAX_IMAGE_BYTES:
         raise ValueError("Bild: zu groß")
     return resp.content, content_type
@@ -67,15 +70,20 @@ def send(
         try:
             data, content_type = fetch_image(message.attach_url)
         except Exception as exc:
-            log.warning("Bild nicht geladen (%s), Meldung geht ohne Bild raus", exc)
+            # Notlösung wie früher: Apprise lädt das Bild selbst.
+            log.warning("Bild nicht geladen (%s), Apprise versucht es selbst", exc)
+            attach = apprise.AppriseAttachment()
+            attach.add(message.attach_url)
+            if ap.notify(**_text(message), attach=attach):
+                return
         else:
             with tempfile.TemporaryDirectory(prefix="sniper-") as tmp:
-                path = Path(tmp) / f"bild{_SUFFIXES.get(content_type, '.jpg')}"
+                path = Path(tmp) / f"bild{_SUFFIXES[content_type]}"
                 path.write_bytes(data)
                 attach = apprise.AppriseAttachment()
                 attach.add(str(path))
                 if ap.notify(**_text(message), attach=attach):
                     return
-            log.warning("Senden mit Bild fehlgeschlagen, versuche es ohne Bild")
+        log.warning("Senden mit Bild fehlgeschlagen, versuche es ohne Bild")
     if not ap.notify(**_text(message), attach=None):
         raise SendError("Zustellung fehlgeschlagen")

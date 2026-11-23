@@ -36,8 +36,9 @@ SELECTORS = {
 _PRICE_LINE = re.compile(r"^(\d[\d.]*(,\d{1,2})?\s*€)?\s*(VB)?$|^Zu verschenken$")
 NO_RESULTS_MARKER = "keine Ergebnisse"
 # Bildgröße: $_2 ist das Listen-Vorschaubild (150 × 200), $_59 die Größe der Anzeigenseite
-# (720 × 960). Am 23.11.2026 im Browser nachgemessen.
-IMAGE_RULE = "$_59.AUTO"
+# (720 × 960). „.JPG“ statt „.AUTO“: AUTO liefert Browsern AVIF, und das nimmt Telegram nicht
+# als Foto an. Am 23.11.2026 im Browser nachgemessen.
+IMAGE_RULE = "$_59.JPG"
 _TIME = re.compile(r"(Heute|Gestern),\s*(\d{1,2}):(\d{2})")
 _DATE = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})")
 

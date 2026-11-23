@@ -78,7 +78,28 @@ def test_png_keeps_png_extension(monkeypatch):
     assert paths[0].endswith(".png")
 
 
-def test_image_download_failure_sends_text_only(monkeypatch):
+def test_image_download_failure_falls_back_to_url_then_text(monkeypatch):
+    import apprise
+
+    calls = []
+
+    def fake_notify(self, **kw):
+        attach = kw.get("attach")
+        calls.append(None if attach is None else attach[0].url(privacy=False))
+        return attach is None
+
+    monkeypatch.setattr(apprise.Apprise, "notify", fake_notify)
+
+    def broken(url):
+        raise ValueError("Bild: unerwarteter Inhalt image/avif")
+
+    send("json://localhost:1/", Message("T", "B", "https://img.example/1.jpg"), fetch_image=broken)
+    assert len(calls) == 2
+    assert calls[0].startswith("https://img.example/1.jpg")
+    assert calls[1] is None
+
+
+def test_image_download_failure_url_attachment_succeeds(monkeypatch):
     import apprise
 
     calls = []
@@ -87,10 +108,10 @@ def test_image_download_failure_sends_text_only(monkeypatch):
     )
 
     def broken(url):
-        raise OSError("403 Forbidden")
+        raise OSError("timeout")
 
-    send("json://localhost:1/", Message("T", "B", "https://img/1"), fetch_image=broken)
-    assert calls == [None]
+    send("json://localhost:1/", Message("T", "B", "https://img.example/1.jpg"), fetch_image=broken)
+    assert len(calls) == 1 and calls[0] is not None
 
 
 def test_download_image_uses_browser_session():
@@ -101,6 +122,8 @@ def test_download_image_uses_browser_session():
     assert download_image("https://img/1", session=session) == (JPEG, "image/jpeg")
     method, url, kwargs = session.calls[0]
     assert (method, url) == ("GET", "https://img/1")
+    accept = kwargs["headers"]["Accept"]
+    assert accept.startswith("image/jpeg") and "avif" not in accept
 
 
 @pytest.mark.parametrize(
@@ -108,6 +131,8 @@ def test_download_image_uses_browser_session():
     [
         dict(status_code=404, headers={"Content-Type": "image/jpeg"}, content=JPEG),
         dict(status_code=200, headers={"Content-Type": "text/html"}, content=b"<html>"),
+        dict(status_code=200, headers={"Content-Type": "image/avif"}, content=b"avif"),
+        dict(status_code=200, headers={"Content-Type": "image/webp"}, content=b"webp"),
         dict(
             status_code=200,
             headers={"Content-Type": "image/jpeg"},
