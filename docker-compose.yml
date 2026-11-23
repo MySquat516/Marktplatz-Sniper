@@ -1,0 +1,18 @@
+services:
+  sniper:
+    # Fertiges Image aus der GitHub Container Registry (wird bei jedem Push auf main gebaut).
+    # Update: docker compose pull && docker compose up -d
+    image: ghcr.io/mysquat516/marktplatz-sniper:latest
+    container_name: marktplatz-sniper
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8095}:8095"      # anderer Host-Port: PORT=8096 docker compose up -d
+    environment:
+      TZ: Europe/Berlin
+      # Optional (siehe README):
+      # APP_PASSWORD: ein-langes-passwort   # schaltet den Passwortschutz ein
+      # APP_USER: admin
+      # EBAY_CLIENT_ID: ...                 # alternativ in der Oberfläche eintragen
+      # EBAY_CLIENT_SECRET: ...
+    volumes:
+      - ./data:/data              # Datenbank (sniper.db) und Probe-Dateien (probes/)
