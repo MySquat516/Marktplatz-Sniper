@@ -6,7 +6,7 @@ services:
     container_name: marktplatz-sniper
     restart: unless-stopped
     ports:
-      - "${PORT:-8095}:8095"      # anderer Host-Port: PORT=8096 docker compose up -d
+      - "${PORT:-8092}:8095"      # Host-Port 8092 → Container 8095; anderer Host-Port: PORT=8096 docker compose up -d
     environment:
       TZ: Europe/Berlin
       # Optional (siehe README):

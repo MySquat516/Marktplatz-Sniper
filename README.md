@@ -33,7 +33,7 @@ docker compose pull      # neues Image holen
 docker compose up -d     # starten bzw. neu starten
 ```
 
-Danach ist die Oberfläche unter `http://<server>:8095` erreichbar.
+Danach ist die Oberfläche unter `http://<server>:8092` erreichbar.
 
 **Privates Paket:** Wenn das Repo privat ist, muss sich der Server einmal anmelden:
 
