@@ -105,3 +105,13 @@ def test_gives_up_after_24h(session):
     entry = session.query(OutboxEntry).one()
     assert entry.failed_at == later
     assert deliver_due(session, later + timedelta(hours=1), send=Recorder()) == 0
+
+
+def test_link_survives_the_outbox(session):
+    (a,) = targets(session, "a")
+    msg = Message("T", "B", "https://img", link_url="https://x/1", link_label="Anzeige öffnen")
+    enqueue(session, [a], msg, kind="listing", search_id=None, now=NOW)
+    session.commit()
+    send = Recorder()
+    deliver_due(session, NOW, send=send)
+    assert send.sent == [("ntfy://a", msg)]

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from sqlalchemy import inspect
@@ -102,3 +103,35 @@ def test_datetimes_come_back_timezone_aware(session):
     session.commit()
     session.expire_all()
     assert session.get(Search, s.id).created_at == NOW
+
+
+def test_existing_database_is_upgraded_with_link_columns(tmp_path):
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import text
+
+    from sniper.db import make_engine, migrate
+
+    engine = make_engine(tmp_path)
+    cfg = Config()
+    cfg.set_main_option("script_location", str(Path(__file__).parents[1] / "src/sniper/migrations"))
+    with engine.begin() as conn:
+        cfg.attributes["connection"] = conn
+        command.upgrade(cfg, "0001")
+        conn.execute(
+            text(
+                "INSERT INTO targets (id, name, apprise_url, status_notices) "
+                "VALUES (1, 'a', 'ntfy://a', 0)"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO outbox (target_id, kind, title, body, attempts, "
+                "next_attempt_at, created_at) VALUES (1, 'listing', 'alt', 'b', 0, "
+                "'2026-11-23 07:00:00', '2026-11-23 07:00:00')"
+            )
+        )
+    migrate(engine)
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT title, link_url, link_label FROM outbox")).one()
+    assert tuple(row) == ("alt", None, None)

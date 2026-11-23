@@ -35,7 +35,8 @@ def test_second_check_notifies_new_listing(session):
     run_check(session, s, adapter, NOW + timedelta(minutes=5), rng=half)
     entries = outbox(session, "listing")
     assert sorted(e.target_id for e in entries) == sorted([a.id, b.id])
-    assert entries[0].title == "[Kleinanzeigen] Jacke 2 – 45 €"
+    assert entries[0].title == "Jacke 2"
+    assert entries[0].link_url == "https://example/2"
     assert s.last_match_at == NOW + timedelta(minutes=5)
     matched = session.query(Seen).filter_by(status="matched").one()
     assert matched.external_id == "2"
@@ -68,7 +69,7 @@ def test_overflow_enqueues_summary(session):
     run_check(session, s, adapter, NOW, rng=half)
     run_check(session, s, adapter, NOW, rng=half)
     assert len(outbox(session, "listing")) == 11
-    assert outbox(session, "listing")[-1].title == "[Kleinanzeigen] Jacken: 2 weitere neue Anzeigen"
+    assert outbox(session, "listing")[-1].title == "Jacken: 2 weitere neue Anzeigen"
 
 
 def test_blocked_notifies_once_and_backs_off(session):

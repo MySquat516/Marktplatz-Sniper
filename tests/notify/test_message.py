@@ -57,38 +57,31 @@ def test_listing_message_title_and_body():
         "Jacken",
         NOW,
     )
-    assert msg.title == "[Kleinanzeigen] Jacke Gr. L – 45 € VB"
-    assert msg.body.splitlines() == [
-        "Jacke Gr. L",
-        "45 € VB",
-        "10115 Berlin",
-        "eingestellt vor 4 min",
-        "Suche: Jacken",
+    assert msg.title == "Jacke Gr. L"
+    assert msg.body.splitlines() == ["45 € VB · Kleinanzeigen", "📍 10115 Berlin", "🔎 Jacken"]
+    assert (msg.link_url, msg.link_label) == (
         "https://www.kleinanzeigen.de/s-anzeige/jacke/1",
-    ]
+        "Anzeige öffnen",
+    )
     assert msg.attach_url == "https://img/1.jpg"
 
 
-def test_listing_message_hours_and_missing_optionals():
+def test_listing_message_has_no_time_and_skips_missing_location():
     msg = listing_message(listing(price=Decimal("5"), posted_at=NOW - timedelta(hours=3)), "J", NOW)
-    assert "eingestellt vor 3 h" in msg.body.splitlines()
+    assert msg.body.splitlines() == ["5 € · Kleinanzeigen", "🔎 J"]
+    assert "eingestellt" not in msg.body
     assert msg.attach_url is None
-    plain = listing_message(listing(price=Decimal("5")), "J", NOW).body.splitlines()
-    assert plain == [
-        "Jacke Gr. L",
-        "5 €",
-        "Suche: J",
-        "https://www.kleinanzeigen.de/s-anzeige/jacke/1",
-    ]
 
 
 def test_listing_message_shipping_lines():
     with_cost = listing_message(
-        listing(price=Decimal("45"), shipping_cost=Decimal("4.99")), "J", NOW
+        listing(platform=Platform.EBAY, price=Decimal("45"), shipping_cost=Decimal("4.99")),
+        "J",
+        NOW,
     )
-    assert with_cost.body.splitlines()[1] == "45 € + 4,99 € Versand"
+    assert with_cost.body.splitlines()[0] == "45 € + 4,99 € Versand · eBay"
     pickup = listing_message(listing(price=Decimal("45"), shipping=False), "J", NOW)
-    assert pickup.body.splitlines()[1] == "45 €, nur Abholung"
+    assert pickup.body.splitlines()[0] == "45 €, nur Abholung · Kleinanzeigen"
 
 
 def test_status_texts():
@@ -117,6 +110,8 @@ def test_status_texts():
         "Seit 7 Tagen keine neue Anzeige. Prüf die Suche oder ob eBay sich verändert hat.",
     )
     assert overflow_message("Jacken", Platform.EBAY, 3, "https://www.ebay.de/sch/x") == Message(
-        "[eBay] Jacken: 3 weitere neue Anzeigen",
-        "Mehr als 10 Treffer auf einmal. Alle ansehen: https://www.ebay.de/sch/x",
+        "Jacken: 3 weitere neue Anzeigen",
+        "Mehr als 10 Treffer auf einmal · eBay",
+        link_url="https://www.ebay.de/sch/x",
+        link_label="Alle ansehen",
     )

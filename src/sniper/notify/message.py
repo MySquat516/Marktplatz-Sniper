@@ -11,9 +11,14 @@ from sniper.models import Listing, Platform, SearchState
 
 @dataclass(frozen=True)
 class Message:
+    """Eine Meldung. Der Link steht extra, damit der Versand ihn je nach Dienst als
+    anklickbaren Text (Telegram) oder als ausgeschriebene URL (Klartext-Dienste) setzt."""
+
     title: str
     body: str
     attach_url: str | None = None
+    link_url: str | None = None
+    link_label: str = "Anzeige öffnen"
 
 
 def euro(amount: Decimal) -> str:
@@ -38,36 +43,30 @@ def format_price(listing: Listing) -> str:
     return text
 
 
-def _age(posted_at: datetime, now: datetime) -> str:
-    minutes = max(0, int((now - posted_at).total_seconds() // 60))
-    if minutes < 60:
-        return f"eingestellt vor {minutes} min"
-    return f"eingestellt vor {minutes // 60} h"
-
-
 def listing_message(listing: Listing, search_name: str, now: datetime) -> Message:
     price_line = format_price(listing)
     if listing.shipping_cost is not None:
         price_line += f" + {euro(listing.shipping_cost)} Versand"
     elif listing.shipping is False:
         price_line += ", nur Abholung"
-    lines = [listing.title, price_line]
+    lines = [f"{price_line} · {listing.platform.label}"]
     if listing.location:
-        lines.append(listing.location)
-    if listing.posted_at is not None:
-        lines.append(_age(listing.posted_at, now))
-    lines += [f"Suche: {search_name}", listing.url]
+        lines.append(f"📍 {listing.location}")
+    lines.append(f"🔎 {search_name}")
     return Message(
-        title=f"[{listing.platform.label}] {listing.title} – {format_price(listing)}",
+        title=listing.title,
         body="\n".join(lines),
         attach_url=listing.photo_urls[0] if listing.photo_urls else None,
+        link_url=listing.url,
     )
 
 
 def overflow_message(search_name: str, platform: Platform, count: int, search_url: str) -> Message:
     return Message(
-        f"[{platform.label}] {search_name}: {count} weitere neue Anzeigen",
-        f"Mehr als 10 Treffer auf einmal. Alle ansehen: {search_url}",
+        f"{search_name}: {count} weitere neue Anzeigen",
+        f"Mehr als 10 Treffer auf einmal · {platform.label}",
+        link_url=search_url,
+        link_label="Alle ansehen",
     )
 
 

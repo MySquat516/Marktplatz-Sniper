@@ -6,6 +6,7 @@ es selbst, lehnen manche Bildserver die Anfrage ab, und die Meldung käme ohne B
 
 from __future__ import annotations
 
+import html
 import logging
 import tempfile
 from collections.abc import Callable
@@ -47,14 +48,30 @@ def download_image(url: str, session: Any = None) -> tuple[bytes, str]:
     return resp.content, content_type
 
 
-def _text(message: Message) -> dict:
-    # Titel kommen von Verkäufern. Als Klartext markiert, damit Apprise „<“ und „&“ für
-    # Dienste mit HTML-Modus (z. B. Telegram) maskiert, statt sie roh durchzureichen.
-    return {
-        "title": message.title,
-        "body": message.body,
-        "body_format": apprise.NotifyFormat.TEXT,
-    }
+def _wants_html(ap: apprise.Apprise) -> bool:
+    """Telegram & Co. bevorzugen HTML, dann wird der Link anklickbar."""
+    formats = ap[0].notify_format
+    preferred = formats[0] if isinstance(formats, tuple) else formats
+    return preferred == apprise.NotifyFormat.HTML
+
+
+def _render(message: Message, as_html: bool) -> dict:
+    # Titel und Ort kommen von Verkäufern: im HTML-Modus maskieren, damit „<“ und „&“
+    # ankommen und niemand eigene Formatierung einschleusen kann.
+    if as_html:
+        body = html.escape(message.body, quote=False)
+        if message.link_url:
+            href = html.escape(message.link_url, quote=True)
+            body += f'\n➜ <a href="{href}">{html.escape(message.link_label)}</a>'
+        return {
+            "title": html.escape(message.title, quote=False),
+            "body": body,
+            "body_format": apprise.NotifyFormat.HTML,
+        }
+    body = message.body
+    if message.link_url:
+        body += f"\n➜ {message.link_url}"
+    return {"title": message.title, "body": body, "body_format": apprise.NotifyFormat.TEXT}
 
 
 def send(
@@ -66,6 +83,7 @@ def send(
     ap = apprise.Apprise()
     if not ap.add(apprise_url):
         raise SendError("Ungültige Apprise-Adresse")
+    text = _render(message, _wants_html(ap))
     if message.attach_url:
         try:
             data, content_type = fetch_image(message.attach_url)
@@ -74,7 +92,7 @@ def send(
             log.warning("Bild nicht geladen (%s), Apprise versucht es selbst", exc)
             attach = apprise.AppriseAttachment()
             attach.add(message.attach_url)
-            if ap.notify(**_text(message), attach=attach):
+            if ap.notify(**text, attach=attach):
                 return
         else:
             with tempfile.TemporaryDirectory(prefix="sniper-") as tmp:
@@ -82,8 +100,8 @@ def send(
                 path.write_bytes(data)
                 attach = apprise.AppriseAttachment()
                 attach.add(str(path))
-                if ap.notify(**_text(message), attach=attach):
+                if ap.notify(**text, attach=attach):
                     return
         log.warning("Senden mit Bild fehlgeschlagen, versuche es ohne Bild")
-    if not ap.notify(**_text(message), attach=None):
+    if not ap.notify(**text, attach=None):
         raise SendError("Zustellung fehlgeschlagen")

@@ -146,3 +146,51 @@ def test_download_image_rejects_bad_responses(response):
 
     with pytest.raises(ValueError):
         download_image("https://img/1", session=FakeSession([FakeResponse(**response)]))
+
+
+LINKED = Message(
+    "Nike <3 H&M Jacke",
+    "45 € · Kleinanzeigen\n🔎 Jacken",
+    link_url="https://www.kleinanzeigen.de/s-anzeige/x/1?a=1&b=2",
+    link_label="Anzeige öffnen",
+)
+
+
+def capture(monkeypatch):
+    import apprise
+
+    seen = []
+    monkeypatch.setattr(apprise.Apprise, "notify", lambda self, **kw: seen.append(kw) or True)
+    return seen
+
+
+def test_telegram_gets_clickable_link_and_escaped_text(monkeypatch):
+    import apprise
+
+    seen = capture(monkeypatch)
+    send("tgram://123456789:abcdefghijklmnop/12345", LINKED)
+    (kw,) = seen
+    assert kw["body_format"] == apprise.NotifyFormat.HTML
+    assert kw["title"] == "Nike &lt;3 H&amp;M Jacke"
+    assert kw["body"].splitlines() == [
+        "45 € · Kleinanzeigen",
+        "🔎 Jacken",
+        '➜ <a href="https://www.kleinanzeigen.de/s-anzeige/x/1?a=1&amp;b=2">Anzeige öffnen</a>',
+    ]
+
+
+def test_text_services_get_the_plain_url(monkeypatch):
+    import apprise
+
+    seen = capture(monkeypatch)
+    send("ntfy://thema", LINKED)
+    (kw,) = seen
+    assert kw["body_format"] == apprise.NotifyFormat.TEXT
+    assert kw["title"] == "Nike <3 H&M Jacke"
+    assert kw["body"].splitlines()[-1] == "➜ https://www.kleinanzeigen.de/s-anzeige/x/1?a=1&b=2"
+
+
+def test_message_without_link_has_no_link_line(monkeypatch):
+    seen = capture(monkeypatch)
+    send("tgram://123456789:abcdefghijklmnop/12345", Message("Sniper: Test", "Hallo & so"))
+    assert seen[0]["body"] == "Hallo &amp; so"

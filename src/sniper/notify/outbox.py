@@ -43,6 +43,8 @@ def enqueue(
                 title=message.title,
                 body=message.body,
                 attach_url=message.attach_url,
+                link_url=message.link_url,
+                link_label=message.link_label,
                 attempts=0,
                 next_attempt_at=now,
                 created_at=now,
@@ -73,7 +75,14 @@ def deliver_due(
         entry.next_attempt_at = now + BACKOFF[min(entry.attempts - 1, len(BACKOFF) - 1)]
         session.commit()
         try:
-            send(target.apprise_url, Message(entry.title, entry.body, entry.attach_url))
+            message = Message(
+                entry.title,
+                entry.body,
+                entry.attach_url,
+                link_url=entry.link_url,
+                link_label=entry.link_label or "Anzeige öffnen",
+            )
+            send(target.apprise_url, message)
         except Exception as exc:
             entry.last_error = str(exc) or type(exc).__name__
             if now - entry.created_at >= GIVE_UP_AFTER:
