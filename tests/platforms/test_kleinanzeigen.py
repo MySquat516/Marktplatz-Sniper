@@ -73,10 +73,10 @@ def test_fetch_parses_listings():
     assert jacke.title == "Carhartt Jacke Gr. L"
     assert (
         jacke.url
-        == "https://www.kleinanzeigen.de/s-anzeige/carhartt-jacke-gr-l/2934567890-160-3331"
+        == "https://www.kleinanzeigen.de/s-anzeige/carhartt-jacke-gr-l/2934567890-160-9189"
     )
     assert (jacke.price, jacke.negotiable, jacke.shipping) == (Decimal("45"), True, True)
-    assert jacke.location == "10115 Berlin Mitte (3 km)"
+    assert jacke.location == "10115 Berlin"
     assert jacke.photo_urls == (
         "https://img.kleinanzeigen.de/api/v1/prod-ads/images/2934567890?rule=$_2.AUTO",
     )
@@ -112,3 +112,35 @@ def test_unknown_page_is_layout_changed():
 def test_build_adapters_registers_kleinanzeigen():
     adapters = build_adapters(FakeHttp(""), lambda: ("", ""))
     assert isinstance(adapters[Platform.KLEINANZEIGEN], KleinanzeigenAdapter)
+
+
+def test_top_ads_and_ad_slots_are_skipped():
+    ids = [item.external_id for item in fetch("results.html")]
+    assert ids == ["2934567890", "2934567891", "2934567892", "2934567893"]
+
+
+def test_old_strikethrough_price_is_ignored():
+    jacke = fetch("results.html")[0]
+    assert jacke.price == Decimal("45")
+
+
+def test_real_page():
+    soft, fleece = fetch("real-results.html")
+    assert (soft.external_id, fleece.external_id) == ("3580144532", "3580144505")
+    assert soft.title == "Softshelljacke Color Kids Gr.152"
+    assert soft.url == (
+        "https://www.kleinanzeigen.de/s-anzeige/softshelljacke-color-kids-gr-152/3580144532-22-7496"
+    )
+    assert (soft.price, soft.negotiable, soft.shipping) == (Decimal("12"), False, True)
+    assert soft.location == "95445 Bayreuth"
+    assert soft.posted_at == datetime(2026, 11, 23, 7, 25, tzinfo=UTC)
+    assert soft.photo_urls == (
+        "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a1/"
+        "a15e46ee-5fcb-4e96-8907-55d79ac82e46?rule=$_2.AUTO",
+    )
+    assert (fleece.price, fleece.location) == (Decimal("15"), "27639 Dorum")
+
+
+def test_real_page_is_newest_first():
+    times = [item.posted_at for item in fetch("real-results.html") if item.posted_at]
+    assert times == sorted(times, reverse=True)

@@ -23,7 +23,11 @@ BASE = "https://www.willhaben.at/iad/"
 RESULT_PATH = ("props", "pageProps", "searchResult", "advertSummaryList", "advertSummary")
 SORT_PARAM, SORT_NEWEST = "sort", "1"
 ATTR_PRICE, ATTR_LOCATION, ATTR_POSTCODE = "PRICE", "LOCATION", "POSTCODE"
+# PUBLISHED sind Epoch-Millisekunden (UTC). Nicht PUBLISHED_String nehmen: Das ist Wiener
+# Ortszeit mit einem falschen „Z“ dahinter (am 23.11.2026 so beobachtet).
 ATTR_PUBLISHED, ATTR_SEO_URL = "PUBLISHED", "SEO_URL"
+# „PayLivery“: Die Anzeige kann über willhaben verschickt werden.
+ATTR_SHIPPING = "p2penabled"
 
 
 class WillhabenAdapter:
@@ -92,6 +96,7 @@ def _to_listing(summary: dict[str, Any]) -> Listing:
         url=BASE + (attr(summary, ATTR_SEO_URL) or ""),
         price=price,
         negotiable=negotiable,
+        shipping=True if attr(summary, ATTR_SHIPPING) == "true" else None,
         photo_urls=tuple(img["mainImageUrl"] for img in images if img.get("mainImageUrl")),
         location=location or None,
         posted_at=_published(attr(summary, ATTR_PUBLISHED)),

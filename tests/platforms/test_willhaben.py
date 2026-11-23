@@ -100,3 +100,26 @@ def test_challenge_page_is_blocked():
 def test_build_adapters_registers_willhaben():
     adapters = build_adapters(FakeHttp(), lambda: ("", ""))
     assert isinstance(adapters[Platform.WILLHABEN], WillhabenAdapter)
+
+
+def test_real_page():
+    a, _ = adapter((FIX / "real-results.html").read_text(encoding="utf-8"))
+    (item,) = a.fetch(a.parse_url(SEARCH))
+    assert item.external_id == "1096547607"
+    assert item.title == "Kindermotorsportjacke Gr. 140q"
+    assert item.url == (
+        "https://www.willhaben.at/iad/kaufen-und-verkaufen/d/kindermotorsportjacke-gr-140q-1096547607/"
+    )
+    assert item.price == Decimal("40")
+    assert item.location == "1220 Wien, 22. Bezirk, Donaustadt"
+    # PUBLISHED (Epoch-ms) ist richtig; PUBLISHED_String zeigt Wiener Zeit mit falschem „Z“.
+    assert item.posted_at == datetime(2026, 11, 23, 7, 24, 49, 418000, tzinfo=UTC)
+    assert item.photo_urls == (
+        "https://cache.willhaben.at/mmo/7/109/654/7607_-316619769_hoved.jpg",
+    )
+    assert item.shipping is True
+
+
+def test_shipping_unknown_without_p2p_flag():
+    a, _ = adapter((FIX / "results.html").read_text(encoding="utf-8"))
+    assert {item.shipping for item in a.fetch(a.parse_url(SEARCH))} == {None}

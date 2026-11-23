@@ -25,13 +25,15 @@ BERLIN = ZoneInfo("Europe/Berlin")
 SORT_NEWEST = "sortierung:neueste"
 SELECTORS = {
     "list": "#srchrslt-adtable",
-    "item": "article.aditem",
-    "title": ".aditem-main .text-module-begin a",
-    "price": ".aditem-main--middle--price-shipping--price",
-    "location": ".aditem-main--top--left",
-    "time": ".aditem-main--top--right",
-    "image": ".imagebox img",
+    "item": "article[data-adid]",
+    "title": "h3 a",
+    "location": 'svg[data-title="locationOutline"] + span',
+    "time": 'svg[data-title="calendarOutline"] + span',
+    "image": "img",
 }
+# Preiszeile: „45 €“, „45 € VB“, „1.250 €“, „VB“, „Zu verschenken“. Die erste passende <p>
+# ist der aktuelle Preis, eine zweite (durchgestrichen) wäre der alte.
+_PRICE_LINE = re.compile(r"^(\d[\d.]*(,\d{1,2})?\s*€)?\s*(VB)?$|^Zu verschenken$")
 NO_RESULTS_MARKER = "keine Ergebnisse"
 _TIME = re.compile(r"(Heute|Gestern),\s*(\d{1,2}):(\d{2})")
 _DATE = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})")
@@ -78,10 +80,10 @@ class KleinanzeigenAdapter:
     def _to_listing(self, article: Tag, now: datetime) -> Listing | None:
         adid = article.get("data-adid")
         title_el = article.select_one(SELECTORS["title"])
-        if not adid or title_el is None:
+        if not adid or title_el is None or _is_top_ad(article):
             return None
         href = article.get("data-href") or title_el.get("href") or ""
-        price, negotiable = parse_price(_text(article.select_one(SELECTORS["price"])))
+        price, negotiable = parse_price(_price_text(article))
         img = article.select_one(SELECTORS["image"])
         photo = (img.get("src") or img.get("data-imgsrc")) if img else None
         full_text = article.get_text(" ")
@@ -104,6 +106,20 @@ class KleinanzeigenAdapter:
             location=_text(article.select_one(SELECTORS["location"])) or None,
             posted_at=parse_time(_text(article.select_one(SELECTORS["time"])), now),
         )
+
+
+def _is_top_ad(article: Tag) -> bool:
+    """TOP-Anzeigen sind bezahlte, oft alte Anzeigen; ihr Abzeichen ist ein SVG direkt im <li>."""
+    item = article.parent
+    return item is not None and item.find("svg", recursive=False) is not None
+
+
+def _price_text(article: Tag) -> str:
+    for p in article.find_all("p"):
+        text = _text(p)
+        if text and _PRICE_LINE.match(text):
+            return text
+    return ""
 
 
 def _text(el: Tag | None) -> str:
