@@ -18,7 +18,10 @@ def item(i, title="Jacke", price=None, age_h=None):
     )
 
 
-def run(listings, seen=(), filters=Filters(), first=False):
+NO_FILTERS = Filters()
+
+
+def run(listings, seen=(), filters=NO_FILTERS, first=False):
     return detect(listings, set(seen), filters, first_check=first, now=NOW)
 
 
