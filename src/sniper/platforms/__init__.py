@@ -40,4 +40,6 @@ def adapter_for_url(url: str, adapters: Mapping[Platform, Adapter]) -> Adapter:
 def build_adapters(
     http: HttpClient, credentials: Callable[[], tuple[str, str]]
 ) -> dict[Platform, Adapter]:
-    return {}
+    from sniper.platforms.ebay import EbayAdapter
+
+    return {Platform.EBAY: EbayAdapter(http, credentials)}

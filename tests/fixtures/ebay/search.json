@@ -1,0 +1,45 @@
+{
+  "href": "https://api.ebay.com/buy/browse/v1/item_summary/search?q=carhartt%20jacke&limit=50",
+  "total": 3,
+  "limit": 50,
+  "offset": 0,
+  "itemSummaries": [
+    {
+      "itemId": "v1|256001112233|0",
+      "legacyItemId": "256001112233",
+      "title": "Carhartt Detroit Jacket Gr. L",
+      "price": {"value": "45.00", "currency": "EUR"},
+      "buyingOptions": ["FIXED_PRICE", "BEST_OFFER"],
+      "itemWebUrl": "https://www.ebay.de/itm/256001112233",
+      "image": {"imageUrl": "https://i.ebayimg.com/images/g/a/s-l225.jpg"},
+      "additionalImages": [{"imageUrl": "https://i.ebayimg.com/images/g/b/s-l225.jpg"}],
+      "shippingOptions": [{"shippingCostType": "FIXED", "shippingCost": {"value": "4.99", "currency": "EUR"}}],
+      "itemLocation": {"postalCode": "10115", "city": "Berlin", "country": "DE"},
+      "itemCreationDate": "2026-11-23T06:52:11.000Z",
+      "condition": "Gebraucht",
+      "seller": {"username": "jacken_jens", "feedbackPercentage": "99.8", "feedbackScore": 512}
+    },
+    {
+      "itemId": "v1|256001112244|0",
+      "legacyItemId": "256001112244",
+      "title": "Carhartt Weste Auktion",
+      "price": {"value": "1.00", "currency": "EUR"},
+      "currentBidPrice": {"value": "12.50", "currency": "EUR"},
+      "buyingOptions": ["AUCTION"],
+      "itemWebUrl": "https://www.ebay.de/itm/256001112244",
+      "image": {"imageUrl": "https://i.ebayimg.com/images/g/c/s-l225.jpg"},
+      "itemLocation": {"country": "DE"},
+      "itemCreationDate": "2026-11-23T06:40:00.000Z",
+      "seller": {"username": "other", "feedbackPercentage": "100.0", "feedbackScore": 3}
+    },
+    {
+      "itemId": "v1|256001112255|0",
+      "title": "Carhartt Mütze ohne Extras",
+      "price": {"value": "8.00", "currency": "EUR"},
+      "buyingOptions": ["FIXED_PRICE"],
+      "itemWebUrl": "https://www.ebay.de/itm/256001112255",
+      "itemLocation": {"city": "Hamburg", "country": "DE"},
+      "seller": {"username": "third"}
+    }
+  ]
+}
