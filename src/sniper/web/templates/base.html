@@ -5,10 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Sniper{% endblock %} · Marktplatz-Sniper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
+  <link rel="icon" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <meta name="theme-color" content="#2f6f5e">
+  <meta name="apple-mobile-web-app-title" content="Sniper">
 </head>
 <body>
   <header class="top">
-    <a class="brand" href="{{ url_for('views.searches') }}">Sniper</a>
+    <a class="brand" href="{{ url_for('views.searches') }}"><img src="{{ url_for('static', filename='icon.svg') }}" alt="" width="28" height="28"> Sniper</a>
     {% if request.endpoint != 'login' %}
     <nav>
       <a href="{{ url_for('views.searches') }}" {% if request.endpoint in ('views.searches', 'views.edit_search', 'views.new_search', 'views.create_search') %}aria-current="page"{% endif %}>Suchen</a>
