@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from sniper.db import OutboxEntry, Target
+from sniper.notify.message import Button
 from tests.web.conftest import Sent, logged_in, post
 
 
@@ -73,3 +74,26 @@ def test_failed_deliveries_listed_on_hits_page(client, session):
     session.commit()
     page = client.get("/treffer").get_data(as_text=True)
     assert "nicht zugestellt" in page and "[eBay] Weste – 5 €" in page
+
+
+def _send_test(make_app, session, base_url="http://localhost"):
+    sent = Sent()
+    client = make_app(send=sent).test_client()
+    with client.session_transaction(base_url=base_url) as s:
+        s["csrf"] = "tok"
+    session.add(Target(name="Handy", apprise_url="tgram://123456:ABCDEF/987654"))
+    session.commit()
+    t = session.query(Target).one()
+    client.post(f"/benachrichtigungen/{t.id}/test", data={"csrf": "tok"}, base_url=base_url)
+    return sent.messages[0][1]
+
+
+def test_test_message_has_a_button_back_to_the_sniper(make_app, session):
+    message = _send_test(make_app, session, "http://192.168.178.51:8092")
+    assert message.buttons == (
+        (Button("Sniper öffnen", "http://192.168.178.51:8092/", "primary"),),
+    )
+
+
+def test_test_message_has_no_button_when_opened_on_the_server_itself(make_app, session):
+    assert _send_test(make_app, session).buttons == ()

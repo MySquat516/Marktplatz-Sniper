@@ -1,7 +1,10 @@
-"""Eine Meldung über Apprise an genau ein Ziel schicken.
+"""Eine Meldung an genau ein Ziel schicken.
 
 Das Bild lädt der Sniper selbst (mit Browser-Kennung) und hängt es als Datei an. Lädt Apprise
 es selbst, lehnen manche Bildserver die Anfrage ab, und die Meldung käme ohne Bild an.
+
+Meldungen mit Knöpfen gehen an Telegram-Ziele direkt über die Bot-API (siehe telegram.py),
+alles andere über Apprise.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ from typing import Any
 
 import apprise
 
+from sniper.notify import telegram
 from sniper.notify.message import Message
 
 log = logging.getLogger(__name__)
@@ -74,12 +78,34 @@ def _render(message: Message, as_html: bool) -> dict:
     return {"title": message.title, "body": body, "body_format": apprise.NotifyFormat.TEXT}
 
 
+def _send_telegram(
+    target: telegram.TelegramTarget,
+    message: Message,
+    fetch_image: Callable[[str], tuple[bytes, str]],
+    post: telegram.Post,
+) -> None:
+    image = None
+    if message.attach_url:
+        try:
+            image = fetch_image(message.attach_url)
+        except Exception as exc:
+            log.warning("Bild nicht geladen (%s), Telegram holt es selbst", exc)
+    try:
+        telegram.send_telegram(target, message, image, post=post)
+    except telegram.TelegramError as exc:
+        raise SendError(str(exc)) from None
+
+
 def send(
     apprise_url: str,
     message: Message,
     *,
     fetch_image: Callable[[str], tuple[bytes, str]] = download_image,
+    telegram_post: telegram.Post = telegram.post,
 ) -> None:
+    if message.buttons and (target := telegram.telegram_target(apprise_url)):
+        _send_telegram(target, message, fetch_image, telegram_post)
+        return
     ap = apprise.Apprise()
     if not ap.add(apprise_url):
         raise SendError("Ungültige Apprise-Adresse")

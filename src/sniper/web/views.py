@@ -15,7 +15,7 @@ from sqlalchemy import Float, cast, delete, func, select
 from sniper.db import OutboxEntry, Search, Seen, Target, get_setting, set_setting
 from sniper.engine import quota
 from sniper.models import Listing, Platform, SearchSpec, SearchState
-from sniper.notify.message import Message, format_price
+from sniper.notify.message import Button, Message, format_price
 from sniper.platforms import adapter_for_url
 from sniper.platforms.base import InvalidUrl
 
@@ -417,12 +417,27 @@ def targets():
         )
 
 
+_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _back_to_sniper() -> tuple[tuple[Button, ...], ...]:
+    """Ein Knopf zurück zur Weboberfläche, so wie sie gerade aufgerufen wurde. Auf dem
+    Server selbst (localhost) zeigt er am Handy ins Leere, dann gibt es keinen."""
+    if (urlsplit(request.host_url).hostname or "") in _LOOPBACK_HOSTS:
+        return ()
+    return ((Button("Sniper öffnen", request.host_url, "primary"),),)
+
+
 @bp.post("/benachrichtigungen/<int:target_id>/test")
 def test_target(target_id: int):
     with rt().session_factory() as db:
         target = db.get(Target, target_id)
         if target is not None:
-            message = Message("Sniper: Test", "Wenn du das liest, klappt die Benachrichtigung.")
+            message = Message(
+                "Sniper: Test",
+                "Wenn du das liest, klappt die Benachrichtigung.",
+                buttons=_back_to_sniper(),
+            )
             try:
                 rt().send(target.apprise_url, message)
                 flash(f"Test gesendet an „{target.name}“.")

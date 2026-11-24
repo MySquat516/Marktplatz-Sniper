@@ -1,6 +1,6 @@
 import pytest
 
-from sniper.notify.message import Message
+from sniper.notify.message import Button, Message
 from sniper.notify.sender import SendError, send
 
 
@@ -194,3 +194,81 @@ def test_message_without_link_has_no_link_line(monkeypatch):
     seen = capture(monkeypatch)
     send("tgram://123456789:abcdefghijklmnop/12345", Message("Sniper: Test", "Hallo & so"))
     assert seen[0]["body"] == "Hallo &amp; so"
+
+
+TG_URL = "tgram://123456789:AAbbCCdd_eeFF-gg/123"
+BUTTONS = ((Button("Anzeige öffnen", "https://x/1", "primary"),),)
+
+
+class TelegramRecorder:
+    def __init__(self, response=(200, {"ok": True})):
+        self.response = response
+        self.calls = []
+
+    def __call__(self, url, **kw):
+        self.calls.append((url.rsplit("/", 1)[1], kw))
+        return self.response
+
+
+def no_apprise(monkeypatch):
+    import apprise
+
+    def fail(self, **kw):
+        raise AssertionError("Apprise darf hier nicht senden")
+
+    monkeypatch.setattr(apprise.Apprise, "notify", fail)
+
+
+def test_telegram_message_with_buttons_goes_straight_to_telegram(monkeypatch):
+    no_apprise(monkeypatch)
+    tg = TelegramRecorder()
+    msg = Message("T", "B", "https://img/1", link_url="https://x/1", buttons=BUTTONS)
+    send(TG_URL, msg, fetch_image=jpeg, telegram_post=tg)
+    ((method, kw),) = tg.calls
+    assert method == "sendPhoto"
+    assert kw["files"]["photo"][1] == JPEG
+
+
+def test_telegram_image_download_failure_lets_telegram_fetch_the_url(monkeypatch):
+    no_apprise(monkeypatch)
+    tg = TelegramRecorder()
+
+    def broken(url):
+        raise ValueError("Bild: HTTP 403")
+
+    msg = Message("T", "B", "https://img/1", link_url="https://x/1", buttons=BUTTONS)
+    send(TG_URL, msg, fetch_image=broken, telegram_post=tg)
+    ((method, kw),) = tg.calls
+    assert method == "sendPhoto" and kw["json"]["photo"] == "https://img/1"
+
+
+def test_telegram_failure_becomes_send_error(monkeypatch):
+    no_apprise(monkeypatch)
+    tg = TelegramRecorder((403, {"ok": False, "description": "Forbidden: bot was blocked"}))
+    msg = Message("T", "B", link_url="https://x/1", buttons=BUTTONS)
+    with pytest.raises(SendError, match="Telegram: Forbidden: bot was blocked"):
+        send(TG_URL, msg, fetch_image=jpeg, telegram_post=tg)
+
+
+def test_telegram_message_without_buttons_still_uses_apprise(monkeypatch):
+    import apprise
+
+    sent = []
+    monkeypatch.setattr(apprise.Apprise, "notify", lambda self, **kw: sent.append(kw) or True)
+    tg = TelegramRecorder()
+    send(TG_URL, Message("Sniper: Test", "Hallo"), telegram_post=tg)
+    assert tg.calls == [] and len(sent) == 1
+
+
+def test_other_services_ignore_buttons_and_keep_the_link_line(monkeypatch):
+    import apprise
+
+    sent = []
+    monkeypatch.setattr(apprise.Apprise, "notify", lambda self, **kw: sent.append(kw) or True)
+    tg = TelegramRecorder()
+    send(
+        "json://localhost:1/",
+        Message("T", "B", link_url="https://x/1", buttons=BUTTONS),
+        telegram_post=tg,
+    )
+    assert tg.calls == [] and sent[0]["body"].endswith("➜ https://x/1")
