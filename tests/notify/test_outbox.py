@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from sniper.db import OutboxEntry, Target
-from sniper.notify.message import Message
+from sniper.notify.message import Button, Message
 from sniper.notify.outbox import deliver_due, enqueue
 from sniper.notify.sender import SendError
 
@@ -115,3 +115,32 @@ def test_link_survives_the_outbox(session):
     send = Recorder()
     deliver_due(session, NOW, send=send)
     assert send.sent == [("ntfy://a", msg)]
+
+
+def test_buttons_survive_the_outbox(session):
+    (a,) = targets(session, "a")
+    msg = Message(
+        "T",
+        "B",
+        link_url="https://x/1",
+        buttons=(
+            (Button("Anzeige öffnen", "https://x/1", "primary"), Button("eBay", "https://e/1")),
+            (Button("Bildersuche", "https://l/1"),),
+        ),
+    )
+    enqueue(session, [a], msg, kind="listing", search_id=None, now=NOW)
+    session.commit()
+    send = Recorder()
+    deliver_due(session, NOW, send=send)
+    assert send.sent == [("ntfy://a", msg)]
+
+
+def test_entry_without_stored_buttons_is_sent_without_buttons(session):
+    (a,) = targets(session, "a")
+    enqueue(session, [a], Message("T", "B"), kind="listing", search_id=None, now=NOW)
+    session.commit()
+    session.query(OutboxEntry).one().buttons_json = None
+    session.commit()
+    send = Recorder()
+    deliver_due(session, NOW, send=send)
+    assert send.sent[0][1].buttons == ()

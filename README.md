@@ -59,8 +59,12 @@ Carhartt Detroit Jacket Gr. L
 85 € VB · Kleinanzeigen
 📍 10115 Berlin
 🔎 Carhartt Jacken
-➜ Anzeige öffnen
+[ Anzeige öffnen ] [ eBay verkauft ]
+[          Bildersuche           ]
 ```
+
+**eBay verkauft** zeigt verkaufte Angebote mit demselben Titel, also was so etwas wirklich bringt.
+**Bildersuche** öffnet das Foto in Google Lens.
 
 ## Schnellstart
 
@@ -112,8 +116,9 @@ geblockt wird, kaputtgeht oder still ist.
 | ntfy | `ntfy://THEMA` oder `ntfys://ntfy.example.com/THEMA` |
 | Home Assistant | `hassio://HOST/LONG_LIVED_TOKEN` |
 
-Alle weiteren Dienste stehen im [Apprise-Wiki](https://github.com/caronc/apprise/wiki). Bei Diensten
-mit anklickbaren Links (z. B. Telegram) steht in der Meldung „Anzeige öffnen“, sonst der ganze Link.
+Alle weiteren Dienste stehen im [Apprise-Wiki](https://github.com/caronc/apprise/wiki). Telegram
+bekommt Knöpfe unter der Meldung (dafür spricht der Sniper die Bot-API direkt an). Andere Dienste
+bekommen „Anzeige öffnen“ als Link oder den ganzen Link als Text.
 
 <details>
 <summary><b>Telegram-Bot einrichten</b></summary>
@@ -123,7 +128,9 @@ mit anklickbaren Links (z. B. Telegram) steht in der Meldung „Anzeige öffnen�
 2. Deinen neuen Bot öffnen und auf **Starten** tippen (oder irgendeine Nachricht schicken).
 3. Im Browser `https://api.telegram.org/bot<TOKEN>/getUpdates` aufrufen. Der Token kommt direkt
    hinter `bot`, ohne Schrägstrich und ohne `< >`. Bei `"chat":{"id":…}` steht deine **Chat-ID**.
-4. Im Sniper als Adresse `tgram://<TOKEN>/<CHAT-ID>` eintragen und **Test senden**.
+4. Im Sniper als Adresse `tgram://<TOKEN>/<CHAT-ID>` eintragen und **Test senden**. Öffnest du
+   die Weboberfläche dabei über die IP des Servers, hat die Testmeldung einen Knopf
+   **Sniper öffnen**. So siehst du gleich, ob die Knöpfe ankommen.
 
 Für eine Gruppe fügst du den Bot hinzu und schreibst dort etwas. Die Gruppen-ID beginnt mit `-`.
 Ein passendes Profilbild für den Bot liegt unter

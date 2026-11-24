@@ -5,20 +5,42 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from urllib.parse import quote, quote_plus
 
 from sniper.models import Listing, Platform, SearchState
 
 
 @dataclass(frozen=True)
+class Button:
+    """Ein Link-Knopf unter der Meldung. Nur Telegram zeigt Knöpfe; `style` färbt ihn dort."""
+
+    label: str
+    url: str
+    style: str | None = None
+
+
+@dataclass(frozen=True)
 class Message:
     """Eine Meldung. Der Link steht extra, damit der Versand ihn je nach Dienst als
-    anklickbaren Text (Telegram) oder als ausgeschriebene URL (Klartext-Dienste) setzt."""
+    anklickbaren Text oder als ausgeschriebene URL setzt. `buttons` sind Zeilen von Knöpfen;
+    gibt es welche, ersetzen sie bei Telegram die Linkzeile."""
 
     title: str
     body: str
     attach_url: str | None = None
     link_url: str | None = None
     link_label: str = "Anzeige öffnen"
+    buttons: tuple[tuple[Button, ...], ...] = ()
+
+
+def ebay_sold_url(title: str) -> str:
+    """Verkaufte Angebote mit diesem Titel auf eBay.de: zeigt, was so etwas wirklich bringt."""
+    return f"https://www.ebay.de/sch/i.html?_nkw={quote_plus(title)}&LH_Sold=1&LH_Complete=1"
+
+
+def lens_url(photo_url: str) -> str:
+    """Google Lens mit dem Anzeigenfoto: findet das Modell und geklaute Fotos."""
+    return f"https://lens.google.com/uploadbyurl?url={quote(photo_url, safe='')}"
 
 
 def euro(amount: Decimal) -> str:
@@ -53,11 +75,21 @@ def listing_message(listing: Listing, search_name: str, now: datetime) -> Messag
     if listing.location:
         lines.append(f"📍 {listing.location}")
     lines.append(f"🔎 {search_name}")
+    photo = listing.photo_urls[0] if listing.photo_urls else None
+    buttons: list[tuple[Button, ...]] = [
+        (
+            Button("Anzeige öffnen", listing.url, "primary"),
+            Button("eBay verkauft", ebay_sold_url(listing.title)),
+        )
+    ]
+    if photo:
+        buttons.append((Button("Bildersuche", lens_url(photo)),))
     return Message(
         title=listing.title,
         body="\n".join(lines),
-        attach_url=listing.photo_urls[0] if listing.photo_urls else None,
+        attach_url=photo,
         link_url=listing.url,
+        buttons=tuple(buttons),
     )
 
 
@@ -67,6 +99,7 @@ def overflow_message(search_name: str, platform: Platform, count: int, search_ur
         f"Mehr als 10 Treffer auf einmal · {platform.label}",
         link_url=search_url,
         link_label="Alle ansehen",
+        buttons=((Button("Alle ansehen", search_url, "primary"),),),
     )
 
 
