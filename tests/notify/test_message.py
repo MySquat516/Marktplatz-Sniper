@@ -5,8 +5,11 @@ import pytest
 
 from sniper.models import Listing, Platform, SearchState
 from sniper.notify.message import (
+    Button,
     Message,
+    ebay_sold_url,
     format_price,
+    lens_url,
     listing_message,
     overflow_message,
     recovery_message,
@@ -114,4 +117,42 @@ def test_status_texts():
         "Mehr als 10 Treffer auf einmal · eBay",
         link_url="https://www.ebay.de/sch/x",
         link_label="Alle ansehen",
+        buttons=((Button("Alle ansehen", "https://www.ebay.de/sch/x", "primary"),),),
     )
+
+
+def test_listing_buttons_open_price_check_and_photo_search():
+    msg = listing_message(
+        listing(price=Decimal("45"), photo_urls=("https://img.example/a.JPG?rule=$_59.JPG",)),
+        "Jacken",
+        NOW,
+    )
+    assert msg.buttons == (
+        (
+            Button("Anzeige öffnen", "https://www.kleinanzeigen.de/s-anzeige/jacke/1", "primary"),
+            Button("eBay verkauft", ebay_sold_url("Jacke Gr. L")),
+        ),
+        (Button("Bildersuche", lens_url("https://img.example/a.JPG?rule=$_59.JPG")),),
+    )
+
+
+def test_listing_without_photo_has_no_photo_search():
+    msg = listing_message(listing(price=Decimal("45")), "Jacken", NOW)
+    assert [b.label for row in msg.buttons for b in row] == ["Anzeige öffnen", "eBay verkauft"]
+
+
+def test_ebay_sold_url_searches_finished_sales_on_ebay_de():
+    assert ebay_sold_url("Jacke Gr. L & Mütze") == (
+        "https://www.ebay.de/sch/i.html?_nkw=Jacke+Gr.+L+%26+M%C3%BCtze&LH_Sold=1&LH_Complete=1"
+    )
+
+
+def test_lens_url_encodes_the_whole_image_url():
+    assert lens_url("https://img.example/a.JPG?rule=$_59.JPG") == (
+        "https://lens.google.com/uploadbyurl?url="
+        "https%3A%2F%2Fimg.example%2Fa.JPG%3Frule%3D%24_59.JPG"
+    )
+
+
+def test_status_messages_have_no_buttons():
+    assert status_message("J", Platform.EBAY, SearchState.ERROR, "x").buttons == ()

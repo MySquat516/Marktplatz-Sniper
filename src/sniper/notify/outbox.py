@@ -8,6 +8,7 @@ nicht erreichbar ist, hält die anderen nicht auf.
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta
@@ -18,11 +19,25 @@ from sqlalchemy.orm import Session
 
 from sniper.db import OutboxEntry, Target
 from sniper.notify import sender
-from sniper.notify.message import Message
+from sniper.notify.message import Button, Message
 
 log = logging.getLogger(__name__)
 BACKOFF = tuple(timedelta(minutes=m) for m in (1, 5, 15, 60))
 GIVE_UP_AFTER = timedelta(hours=24)
+
+
+def _buttons_to_json(buttons: tuple[tuple[Button, ...], ...]) -> str | None:
+    if not buttons:
+        return None
+    return json.dumps(
+        [[[b.label, b.url, b.style] for b in row] for row in buttons], ensure_ascii=False
+    )
+
+
+def _buttons_from_json(raw: str | None) -> tuple[tuple[Button, ...], ...]:
+    if not raw:
+        return ()
+    return tuple(tuple(Button(*b) for b in row) for row in json.loads(raw))
 
 
 def enqueue(
@@ -45,6 +60,7 @@ def enqueue(
                 attach_url=message.attach_url,
                 link_url=message.link_url,
                 link_label=message.link_label,
+                buttons_json=_buttons_to_json(message.buttons),
                 attempts=0,
                 next_attempt_at=now,
                 created_at=now,
@@ -81,6 +97,7 @@ def deliver_due(
                 entry.attach_url,
                 link_url=entry.link_url,
                 link_label=entry.link_label or "Anzeige öffnen",
+                buttons=_buttons_from_json(entry.buttons_json),
             )
             send(target.apprise_url, message)
         except Exception as exc:
